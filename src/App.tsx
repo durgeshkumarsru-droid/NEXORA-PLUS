@@ -581,7 +581,7 @@ export default function App() {
               }}>
                 <iframe
                   key={selectedEpisode?.id || selectedMovie.id}
-                  src={`https://www.youtube.com/embed/${getYouTubeVideoId(activeVideoUrl)}?autoplay=1&mute=1&playsinline=1`}
+                  src={`https://www.youtube.com/embed/${getYouTubeVideoId(activeVideoUrl)}?autoplay=1&playsinline=1`}
                   title={activeVideoTitle}
                   style={{width:'100%',height:'100%',border:0,position:'absolute',inset:0}}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -595,7 +595,7 @@ export default function App() {
               <div id="nexora-player-wrap" style={{position:'relative',width:'100%',aspectRatio:'16 / 9',background:'#000',borderRadius:12,overflow:'hidden'}}>
                 <iframe
                   key={selectedEpisode?.id || selectedMovie.id}
-                  src={`https://player.vimeo.com/video/${getVimeoVideoId(activeVideoUrl)}?autoplay=1&muted=1`}
+                  src={`https://player.vimeo.com/video/${getVimeoVideoId(activeVideoUrl)}?autoplay=1`}
                   title={activeVideoTitle}
                   style={{width:'100%',height:'100%',border:0,position:'absolute',inset:0}}
                   allow="autoplay; fullscreen; picture-in-picture"
@@ -644,7 +644,7 @@ export default function App() {
               }}>
                 <iframe
                   key={selectedEpisode?.id || selectedMovie.id}
-                  src={`https://fast.wistia.net/embed/iframe/${getWistiaVideoId(activeVideoUrl)}?seo=true&videoFoam=true&autoPlay=true&muted=true&controlsVisibleOnLoad=true&playbar=true&volumeControl=true&fullscreenButton=true&settingsControl=true&playbackRateControl=true&qualityControl=true&playerColor=e50914`}
+                  src={`https://fast.wistia.net/embed/iframe/${getWistiaVideoId(activeVideoUrl)}?seo=true&videoFoam=true&autoPlay=true&controlsVisibleOnLoad=true&playbar=true&volumeControl=true&fullscreenButton=true&settingsControl=true&playbackRateControl=true&qualityControl=true&playerColor=e50914`}
                   title={activeVideoTitle}
                   style={{width:'100%',height:'100%',border:0,position:'absolute',inset:0}}
                   allow="autoplay; fullscreen"
