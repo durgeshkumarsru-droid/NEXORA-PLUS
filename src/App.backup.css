@@ -1,0 +1,693 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #080808;
+  color: white;
+  font-family: Arial, sans-serif;
+}
+
+.app {
+  min-height: 100vh;
+  background: #080808;
+}
+
+.navbar {
+  min-height: 70px;
+  padding: 18px 6%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #080808;
+}
+
+.logo {
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.logo span {
+  color: #e50914;
+}
+
+.navbar nav {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.navbar a {
+  color: #ddd;
+  text-decoration: none;
+}
+
+.hero {
+  min-height: 470px;
+  display: flex;
+  align-items: center;
+  padding: 50px 7%;
+  background:
+    linear-gradient(90deg, #080808 5%, #080808aa 55%, transparent),
+    linear-gradient(0deg, #080808, transparent 60%),
+    url('https://image.tmdb.org/t/p/original/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg') center/cover;
+}
+
+.hero-content {
+  max-width: 550px;
+}
+
+.tagline {
+  color: #e50914;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 3px;
+  margin-bottom: 15px;
+}
+
+.hero h1 {
+  font-size: clamp(42px, 8vw, 76px);
+  line-height: 1.05;
+  margin-bottom: 20px;
+}
+
+.hero-content > p:not(.tagline) {
+  color: #ddd;
+  line-height: 1.7;
+  margin-bottom: 25px;
+}
+
+.explore {
+  display: inline-block;
+  background: #e50914;
+  color: white;
+  text-decoration: none;
+  padding: 13px 24px;
+  border-radius: 5px;
+  font-weight: bold;
+}
+
+.catalog {
+  padding: 40px 6%;
+}
+
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 25px;
+}
+
+.section-heading h2 {
+  font-size: 27px;
+}
+
+.section-heading input {
+  background: #191919;
+  border: 1px solid #444;
+  border-radius: 5px;
+  color: white;
+  padding: 12px;
+  width: 220px;
+}
+
+.movie-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 18px;
+}
+
+.movie-card {
+  background: #171717;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform .2s;
+}
+
+.movie-card:hover {
+  transform: translateY(-5px);
+}
+
+.movie-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+}
+
+.movie-info {
+  padding: 12px;
+}
+
+.movie-info h3 {
+  font-size: 15px;
+  margin-bottom: 7px;
+}
+
+.movie-info p {
+  color: #aaa;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.movie-info button {
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: 5px;
+  background: #e50914;
+  color: white;
+  font-weight: bold;
+}
+
+footer {
+  padding: 25px;
+  text-align: center;
+  color: #777;
+  border-top: 1px solid #222;
+}
+
+@media (max-width: 600px) {
+  .navbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .navbar nav {
+    gap: 14px;
+  }
+
+  .hero {
+    min-height: 400px;
+    padding: 30px 22px;
+  }
+
+  .catalog {
+    padding: 30px 16px;
+  }
+
+  .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .section-heading input {
+    width: 100%;
+  }
+
+  .movie-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background:
+    linear-gradient(#000c, #000e),
+    url('https://image.tmdb.org/t/p/original/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg') center/cover;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 38px 30px;
+  background: #141414;
+  border: 1px solid #333;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.auth-card .logo {
+  margin-bottom: 30px;
+  color: white;
+}
+
+.auth-card h1 {
+  font-size: 28px;
+  margin-bottom: 10px;
+}
+
+.auth-subtitle {
+  color: #aaa;
+  margin-bottom: 25px;
+}
+
+.auth-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.auth-card input {
+  width: 100%;
+  padding: 15px;
+  background: #252525;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: white;
+  font-size: 15px;
+}
+
+.auth-card form button {
+  padding: 15px;
+  background: #e50914;
+  color: white;
+  border: 0;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.auth-card button:disabled {
+  opacity: .6;
+}
+
+.auth-message {
+  color: #ddd;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-top: 18px;
+}
+
+.auth-switch {
+  color: #aaa;
+  margin-top: 25px;
+  font-size: 14px;
+}
+
+.auth-switch button {
+  background: none;
+  border: 0;
+  color: #e50914;
+  font-weight: bold;
+  margin-left: 7px;
+  font-size: 14px;
+}
+
+/* NEXORA+ ADMIN PANEL */
+.admin-panel {
+  padding: 35px 6%;
+  color: white;
+  max-width: 1200px;
+  margin: auto;
+}
+
+.admin-heading {
+  margin-bottom: 28px;
+}
+
+.admin-heading h1 {
+  font-size: 30px;
+  margin-bottom: 8px;
+}
+
+.admin-heading p,
+.admin-movie p {
+  color: #aaa;
+}
+
+.admin-message {
+  background: #242424;
+  padding: 13px;
+  border-radius: 8px;
+  margin: 15px 0;
+  color: #fff;
+}
+
+.admin-form {
+  background: #171717;
+  padding: 22px;
+  border-radius: 12px;
+  display: grid;
+  gap: 14px;
+  margin-bottom: 35px;
+}
+
+.admin-form h2,
+.admin-list h2 {
+  margin-bottom: 10px;
+}
+
+.admin-form input,
+.admin-form textarea,
+.admin-form select {
+  width: 100%;
+  padding: 13px;
+  background: #292929;
+  border: 1px solid #444;
+  color: white;
+  border-radius: 7px;
+  font-size: 15px;
+}
+
+.admin-form textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.admin-panel button {
+  padding: 11px 16px;
+  background: #e50914;
+  color: white;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.admin-panel button:disabled {
+  opacity: .5;
+}
+
+.admin-movie {
+  background: #171717;
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 18px;
+  margin-top: 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  align-items: center;
+}
+
+.admin-movie h3 {
+  margin-bottom: 8px;
+}
+
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 650px) {
+  .admin-panel {
+    padding: 25px 16px;
+  }
+
+  .admin-movie {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-actions {
+    width: 100%;
+  }
+
+  .admin-actions button {
+    flex: 1 1 40%;
+  }
+
+  .admin-heading h1 {
+    font-size: 25px;
+  }
+}
+
+/* NEXORA+ PREMIUM MOBILE DESIGN */
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+button, a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.navbar {
+  position: relative;
+  z-index: 10;
+  flex-wrap: wrap;
+  gap: 18px;
+  border-bottom: 1px solid #202020;
+}
+
+.logo {
+  letter-spacing: -1px;
+  font-size: 30px;
+}
+
+.navbar nav {
+  align-items: center;
+}
+
+.navbar button {
+  background: #e50914;
+  color: white;
+  border: 0;
+  padding: 10px 14px;
+  border-radius: 5px;
+  font-weight: bold;
+}
+
+.hero {
+  min-height: 520px;
+  background-position: center;
+}
+
+.explore {
+  transition: background .2s, transform .2s;
+}
+
+.explore:hover {
+  background: #ff1824;
+  transform: scale(1.04);
+}
+
+.movie-card {
+  border: 1px solid #252525;
+  box-shadow: 0 5px 20px #0005;
+}
+
+.movie-card img {
+  cursor: pointer;
+  transition: transform .3s;
+}
+
+.movie-card img:hover {
+  transform: scale(1.04);
+}
+
+.movie-info button {
+  cursor: pointer;
+}
+
+.movie-info button:active,
+.navbar button:active {
+  transform: scale(.97);
+}
+
+.catalog video {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 75vh;
+  background: #000;
+  object-fit: contain;
+}
+
+@media (max-width: 700px) {
+  .navbar {
+    padding: 16px 18px;
+    gap: 12px;
+  }
+
+  .logo {
+    font-size: 27px;
+  }
+
+  .navbar nav {
+    width: 100%;
+    gap: 12px;
+    justify-content: flex-start;
+  }
+
+  .navbar nav a,
+  .navbar nav button {
+    font-size: 14px;
+  }
+
+  .hero {
+    min-height: 470px;
+    padding: 35px 20px;
+    background-position: center;
+  }
+
+  .hero-content {
+    max-width: 100%;
+  }
+
+  .hero h1 {
+    font-size: clamp(38px, 10vw, 58px);
+  }
+
+  .hero-content > p:not(.tagline) {
+    font-size: 16px;
+  }
+
+  .catalog {
+    padding: 30px 16px;
+  }
+
+  .movie-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .movie-card {
+    min-width: 0;
+  }
+
+  .movie-info {
+    padding: 10px;
+  }
+
+  .movie-info h3 {
+    font-size: 14px;
+  }
+
+  .catalog video {
+    max-height: 55vh;
+  }
+}
+
+
+/* MOVIE CARD ACTIONS */
+
+.movie-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.movie-info .play-button {
+  background: white;
+  color: #111;
+}
+
+.movie-info .play-button:hover {
+  background: #e50914;
+  color: white;
+}
+
+.movie-info button {
+  cursor: pointer;
+  transition: .2s;
+}
+
+
+/* PREMIUM MOVIE DETAILS */
+
+.movie-details {
+  display: flex;
+  align-items: center;
+  gap: 35px;
+  padding: 45px 6%;
+  background: linear-gradient(110deg, #181818, #080808);
+}
+
+.details-poster {
+  width: 260px;
+  max-width: 40%;
+  border-radius: 12px;
+  box-shadow: 0 12px 35px #0009;
+}
+
+.details-content {
+  max-width: 650px;
+}
+
+.details-content h1 {
+  font-size: clamp(32px, 6vw, 58px);
+  margin: 12px 0;
+}
+
+.details-meta {
+  color: #aaa;
+  margin-bottom: 18px;
+}
+
+.details-description {
+  color: #ddd;
+  line-height: 1.8;
+  margin-bottom: 25px;
+}
+
+.details-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.details-actions button {
+  padding: 13px 20px;
+  border: 0;
+  border-radius: 6px;
+  background: #292929;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.details-actions .watch-button {
+  background: #e50914;
+}
+
+.player-section {
+  padding: 30px 6% 55px;
+}
+
+.player-section h2 {
+  margin-bottom: 20px;
+}
+
+.player-section video {
+  display: block;
+  width: 100%;
+  max-height: 75vh;
+  background: #000;
+  border-radius: 12px;
+}
+
+@media (max-width: 600px) {
+  .movie-details {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 25px 18px;
+    gap: 22px;
+  }
+
+  .details-poster {
+    width: 100%;
+    max-width: 280px;
+  }
+
+  .details-content h1 {
+    font-size: 34px;
+  }
+
+  .details-actions {
+    width: 100%;
+  }
+
+  .details-actions button {
+    flex: 1;
+  }
+
+  .player-section {
+    padding: 25px 16px 40px;
+  }
+}
+

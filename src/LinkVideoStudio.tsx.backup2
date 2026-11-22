@@ -1,0 +1,567 @@
+import { useEffect, useState } from 'react'
+import { supabase } from './supabase'
+
+type LinkMovie = {
+  id: string
+  title: string
+  slug: string
+  description: string | null
+  poster_url: string | null
+  video_url: string | null
+  content_type: string
+  is_published: boolean
+  rights_verified: boolean
+}
+
+const empty = {
+  title: '',
+  description: '',
+  poster_url: '',
+  video_url: '',
+  content_type: 'movie',
+}
+
+export default function LinkVideoStudio() {
+  const [items, setItems] = useState<LinkMovie[]>([])
+  const [form, setForm] = useState(empty)
+  const [editing, setEditing] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('')
+  const [posterFile, setPosterFile] = useState<File | null>(null)
+  const [websiteUrl, setWebsiteUrl] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [importMessage, setImportMessage] = useState('')
+  const [wistiaStatus, setWistiaStatus] = useState('Wistia uploader तैयार हो रहा है...')
+
+  async function loadItems() {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('content')
+      .select('id,title,slug,description,poster_url,video_url,content_type,is_published,rights_verified')
+      .like('slug', 'link-video-%')
+      .order('created_at', { ascending: false })
+
+    if (error) setMessage(error.message)
+    else setItems(data || [])
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    loadItems()
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function setupWistiaUploader() {
+      try {
+        const { data, error } = await supabase.functions.invoke(
+          'wistia-upload',
+          { body: {} }
+        )
+
+        if (error) throw error
+        if (!data?.uploadToken) {
+          throw new Error(data?.error || 'Wistia upload token नहीं मिला')
+        }
+
+        if (cancelled) return
+
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = 'https://fast.wistia.com/assets/external/uploader.css'
+        if (!document.querySelector('link[data-nexora-wistia-css]')) {
+          link.setAttribute('data-nexora-wistia-css', 'true')
+          document.head.appendChild(link)
+        }
+
+        const queueWindow = window as any
+        queueWindow._wapiq = queueWindow._wapiq || []
+
+        queueWindow._wapiq.push((W: any) => {
+          if (cancelled) return
+
+          try {
+            const uploader = new W.Uploader({
+              accessToken: data.uploadToken,
+              dropIn: 'nexora-wistia-uploader',
+              projectId: 'qnx204ebz6',
+              theme: 'dark_background',
+            })
+
+            uploader.bind('uploadprogress', (_file: any, progress: number) => {
+              setWistiaStatus(`वीडियो अपलोड हो रहा है: ${Math.round(progress * 100)}%`)
+            })
+
+            uploader.bind('uploadfailed', (_file: any, response: any) => {
+              setWistiaStatus(
+                'Wistia Upload Error: ' + String(response?.error || 'Upload failed')
+              )
+            })
+
+            uploader.bind('uploadembeddable', async (
+              file: any,
+              media: any,
+              embedCode: string
+            ) => {
+              try {
+                const match = String(embedCode || '').match(
+                  /(?:wistia_async_|embed\/iframe\/)([a-z0-9]+)/i
+                )
+                const hashedId =
+                  match?.[1] ||
+                  media?.hashedId ||
+                  media?.hashed_id
+
+                if (!hashedId) {
+                  throw new Error('Wistia Video ID नहीं मिला')
+                }
+
+                const videoUrl =
+                  `https://fast.wistia.net/embed/iframe/${hashedId}`
+
+                const title = String(
+                  media?.name || file?.name || 'Wistia Video'
+                ).replace(/\.[^/.]+$/, '').trim()
+
+                const { error: insertError } = await supabase
+                  .from('content')
+                  .insert({
+                    title,
+                    slug: `link-video-wistia-${Date.now()}`,
+                    description: null,
+                    poster_url: null,
+                    video_url: videoUrl,
+                    content_type: 'movie',
+                    rights_verified: false,
+                    is_published: false,
+                  })
+
+                if (insertError) throw insertError
+
+                setWistiaStatus(
+                  `अपलोड सफल: ${title} — वीडियो Draft में सेव हुआ।`
+                )
+                await loadItems()
+              } catch (saveError) {
+                setWistiaStatus(
+                  'वीडियो अपलोड हुआ, लेकिन ऐप में सेव नहीं हुआ: ' +
+                  (saveError instanceof Error ? saveError.message : 'Unknown error')
+                )
+              }
+            })
+
+            setWistiaStatus('Wistia Upload तैयार है। वीडियो चुनकर अपलोड करें।')
+          } catch (setupError) {
+            setWistiaStatus(
+              'Uploader Error: ' +
+              (setupError instanceof Error ? setupError.message : 'Unknown error')
+            )
+          }
+        })
+
+        if (!document.querySelector('script[data-nexora-wistia-api]')) {
+          const script = document.createElement('script')
+          script.src = 'https://fast.wistia.com/assets/external/api.js'
+          script.async = true
+          script.setAttribute('data-nexora-wistia-api', 'true')
+          script.onerror = () => {
+            setWistiaStatus('Wistia Uploader script लोड नहीं हुआ।')
+          }
+          document.head.appendChild(script)
+        }
+      } catch (error) {
+        setWistiaStatus(
+          'Wistia Setup Error: ' +
+          (error instanceof Error ? error.message : 'Unknown error')
+        )
+      }
+    }
+
+    setupWistiaUploader()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  function update(field: keyof typeof empty, value: string) {
+    setForm(old => ({ ...old, [field]: value }))
+  }
+
+  function detectVideoSource(value: string) {
+    try {
+      const url = new URL(value.trim())
+      const host = url.hostname.toLowerCase().replace(/^www\\./, '')
+
+      if (host === 'youtu.be' || host.endsWith('youtube.com')) return 'YouTube Official Embed'
+      if (host === 'vimeo.com' || host.endsWith('vimeo.com')) return 'Vimeo Official Embed'
+      if (host === 'drive.google.com') return 'Google Drive Preview'
+      if (/\\.(mp4|m4v|webm|ogv)(\\?|$)/i.test(url.pathname + url.search)) return 'Direct Video'
+      return 'Website Link — Stream compatibility needs checking'
+    } catch {
+      return 'Invalid URL'
+    }
+  }
+
+
+  async function importWebsiteVideos() {
+    setImportMessage('')
+    let sourceUrl: URL
+
+    try {
+      sourceUrl = new URL(websiteUrl.trim())
+      if (!['http:', 'https:'].includes(sourceUrl.protocol)) throw new Error()
+    } catch {
+      setImportMessage('सही HTTP या HTTPS वेबसाइट/Feed URL डालें।')
+      return
+    }
+
+    setImporting(true)
+
+    try {
+      const { data, error } = await supabase.functions.invoke('quick-task', {
+        body: { url: sourceUrl.toString() }
+      })
+
+      if (error) throw error
+      if (!data?.success) throw new Error(data?.error || 'Website scan failed')
+
+      const records = Array.isArray(data.videos) ? data.videos : []
+      const existing = new Set(items.map(item => item.video_url).filter(Boolean))
+      const imported = new Set<string>()
+
+      const rows = records.map((item: any, index: number) => {
+        const video = String(item.video_url || item.videoUrl || item.stream_url || item.streamUrl || item.file || item.source || '').trim()
+        let parsed: URL
+
+        try { parsed = new URL(video) } catch { return null }
+
+        if (!['http:', 'https:'].includes(parsed.protocol) || existing.has(video) || imported.has(video)) return null
+        imported.add(video)
+
+        const title = String(item.title || item.name || `Imported Video ${index + 1}`).trim()
+        const poster = String(item.poster_url || item.poster || item.thumbnail || item.image || '').trim()
+
+        return {
+          title,
+          slug: `link-video-${Date.now()}-${index}`,
+          description: String(item.description || item.summary || ''),
+          poster_url: poster || null,
+          video_url: video,
+          content_type: ['series', 'drama'].includes(String(item.content_type || item.type || '').toLowerCase())
+            ? String(item.content_type || item.type).toLowerCase() : 'movie',
+          rights_verified: false,
+          is_published: false
+        }
+      }).filter(Boolean)
+
+      if (!rows.length) {
+        setImportMessage(`स्कैन पूरा: ${data.totalEntries ?? 0} entries मिलीं, लेकिन कोई नया Direct Video नहीं मिला।`)
+      } else {
+        const { error: insertError } = await supabase.from('content').insert(rows)
+        if (insertError) throw insertError
+        setImportMessage(`${rows.length} वीडियो Unpublished सेव हुए। Publish करने से पहले Rights Verify करें।`)
+        await loadItems()
+      }
+    } catch (error: any) {
+      let reason = error instanceof Error ? error.message : 'Unknown error'
+      try {
+        if (error?.context && typeof error.context.text === 'function') {
+          const detail = await error.context.text()
+          if (detail) reason += ' — ' + detail
+        }
+      } catch {}
+      setImportMessage(`Import नहीं हुआ: ${reason}`)
+    }
+
+    setImporting(false)
+  }
+
+  function isValidVideoUrl(value: string) {
+    try {
+      const url = new URL(value)
+      return url.protocol === 'https:' || url.protocol === 'http:'
+    } catch {
+      return false
+    }
+  }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault()
+    setMessage('')
+
+    if (!isValidVideoUrl(form.video_url.trim())) {
+      setMessage('कृपया सही HTTP या HTTPS Video URL डालें।')
+      return
+    }
+
+    if (!form.title.trim()) {
+      setMessage('वीडियो का Title डालें।')
+      return
+    }
+
+    setLoading(true)
+
+    let uploadedPosterUrl = form.poster_url.trim() || null
+
+    if (posterFile) {
+      const extension = posterFile.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const safeExtension = /^[a-z0-9]+$/.test(extension) ? extension : 'jpg'
+      const filePath = `link-posters/${Date.now()}-${Math.random().toString(36).slice(2)}.${safeExtension}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('Movie-Posters')
+        .upload(filePath, posterFile, {
+          contentType: posterFile.type,
+          upsert: false
+        })
+
+      if (uploadError) {
+        setMessage('Poster upload error: ' + uploadError.message)
+        setLoading(false)
+        return
+      }
+
+      const { data } = supabase.storage
+        .from('Movie-Posters')
+        .getPublicUrl(filePath)
+
+      uploadedPosterUrl = data.publicUrl
+    }
+
+    const record = {
+      title: form.title.trim(),
+      slug: editing
+        ? items.find(item => item.id === editing)?.slug || `link-video-${Date.now()}`
+        : `link-video-${Date.now()}`,
+      description: form.description.trim() || null,
+      poster_url: uploadedPosterUrl,
+      video_url: form.video_url.trim(),
+      content_type: form.content_type,
+      rights_verified: false,
+      is_published: false,
+    }
+
+    const result = editing
+      ? await supabase.from('content').update(record).eq('id', editing)
+      : await supabase.from('content').insert(record)
+
+    if (result.error) {
+      setMessage(result.error.message)
+    } else {
+      setMessage('वीडियो लिंक सेव हो गया। अब इसे Library में Publish कर सकते हैं।')
+      setForm(empty)
+      setPosterFile(null)
+      setEditing(null)
+      await loadItems()
+    }
+
+    setLoading(false)
+  }
+
+  function edit(item: LinkMovie) {
+    setEditing(item.id)
+    setPosterFile(null)
+    setForm({
+      title: item.title,
+      description: item.description || '',
+      poster_url: item.poster_url || '',
+      video_url: item.video_url || '',
+      content_type: item.content_type,
+    })
+  }
+
+  async function remove(id: string) {
+    if (!window.confirm('क्या आप यह Link Video हटाना चाहते हैं?')) return
+    setLoading(true)
+    const { error } = await supabase.from('content').delete().eq('id', id)
+    setMessage(error ? error.message : 'Link Video हटा दिया गया।')
+    await loadItems()
+    setLoading(false)
+  }
+
+  async function publish(item: LinkMovie) {
+    if (!item.rights_verified) {
+      setMessage('Publish करने से पहले Content Library में Rights Verify करें।')
+      return
+    }
+    setLoading(true)
+    const { error } = await supabase
+      .from('content')
+      .update({ is_published: !item.is_published })
+      .eq('id', item.id)
+    setMessage(error ? error.message : item.is_published ? 'वीडियो Unpublished।' : 'वीडियो Published।')
+    await loadItems()
+    setLoading(false)
+  }
+
+  return (
+    <div style={{ color: '#f5f5f7' }}>
+      <section className="nx-studio-heading">
+        <div>
+          <span className="nx-studio-eyebrow">LINK MEDIA WORKSPACE</span>
+          <h1>Link Video Studio</h1>
+          <p>Direct MP4 और YouTube URL से वीडियो जोड़ें। पुराना File Upload सिस्टम अलग रहेगा।</p>
+        </div>
+      </section>
+
+      {message && <div className="nx-studio-message">{message}</div>}
+
+      <section className="nx-studio-form" style={{ marginBottom: 24 }}>
+        <div className="nx-studio-form-heading">
+          <div>
+            <h2>Upload Video to Wistia</h2>
+            <p>वीडियो सीधे NEXORA PLUS Wistia Folder में अपलोड करें।</p>
+          </div>
+          <span>WISTIA CLOUD</span>
+        </div>
+        <div
+          id="nexora-wistia-uploader"
+          style={{
+            minHeight: 180,
+            width: '100%',
+            background: '#171717',
+            borderRadius: 12,
+            padding: 12,
+            boxSizing: 'border-box'
+          }}
+        />
+        <p className="nx-studio-message">{wistiaStatus}</p>
+        <small>अपलोड किए गए वीडियो अपने-आप Unpublished Draft के रूप में सेव होंगे। Publish करने से पहले Rights Verify करें।</small>
+      </section>
+
+      <section className="nx-studio-form" style={{ marginBottom: 24 }}>
+        <div className="nx-studio-form-heading">
+          <div>
+            <h2>Universal Website Importer</h2>
+            <p>अधिकृत RSS, Atom Feed या JSON Video API URL डालें।</p>
+          </div>
+          <span>VIDEO IMPORT</span>
+        </div>
+        <label className="nx-studio-field nx-studio-field-full">
+          Website / Feed / API URL
+          <input
+            type="url"
+            value={websiteUrl}
+            onChange={e => setWebsiteUrl(e.target.value)}
+            placeholder="https://example.com/feed.xml"
+          />
+        </label>
+        <button
+          type="button"
+          className="nx-studio-primary"
+          onClick={importWebsiteVideos}
+          disabled={importing || !websiteUrl.trim()}
+        >
+          {importing ? 'Searching videos...' : 'Find & Import Videos →'}
+        </button>
+        {importMessage && <p className="nx-studio-message">{importMessage}</p>}
+        <small>सिर्फ उपलब्ध Direct Video URLs आयात होंगे। सभी आयातित वीडियो Unpublished रहेंगे।</small>
+      </section>
+
+      <form className="nx-studio-form" onSubmit={save}>
+        <div className="nx-studio-form-heading">
+          <div>
+            <h2>{editing ? 'Edit Link Video' : 'Add Video by Link'}</h2>
+            <p>वीडियो URL, Poster और अपनी जानकारी डालें।</p>
+          </div>
+          <span>LINK MEDIA</span>
+        </div>
+
+        <div className="nx-studio-form-grid">
+          <label className="nx-studio-field nx-studio-field-full">
+            Video Title
+            <input required value={form.title} onChange={e => update('title', e.target.value)} placeholder="Enter video title" />
+          </label>
+
+          <label className="nx-studio-field">
+            Video Type
+            <select value={form.content_type} onChange={e => update('content_type', e.target.value)}>
+              <option value="movie">Movie</option>
+              <option value="series">Web Series</option>
+              <option value="drama">Drama</option>
+            </select>
+          </label>
+
+          <label className="nx-studio-field">
+            Poster Image
+            <input
+              type="file"
+              accept="image/*"
+              onChange={e => setPosterFile(e.target.files?.[0] || null)}
+            />
+            <small>Gallery से Poster चुनें। JPG, PNG या WebP</small>
+            {posterFile && <small>Selected: {posterFile.name}</small>}
+            {!posterFile && form.poster_url && (
+              <img
+                src={form.poster_url}
+                alt="Current poster"
+                style={{ width: 90, height: 120, objectFit: 'cover', borderRadius: 8, marginTop: 8 }}
+              />
+            )}
+          </label>
+
+          <label className="nx-studio-field nx-studio-field-full">
+            Video URL (MP4 / YouTube)
+            <input required type="url" value={form.video_url} onChange={e => update('video_url', e.target.value)} placeholder="Paste video or supported website URL..." />
+            {form.video_url.trim() && (
+              <small style={{display:'block',marginTop:8,color:'#ff668c'}}>
+                Detected: {detectVideoSource(form.video_url)}
+              </small>
+            )}
+          </label>
+
+          <label className="nx-studio-field nx-studio-field-full">
+            Description
+            <textarea rows={4} value={form.description} onChange={e => update('description', e.target.value)} placeholder="Write video description..." />
+          </label>
+        </div>
+
+        <div className="nx-studio-form-footer">
+          {editing && (
+            <button type="button" className="nx-studio-cancel" onClick={() => { setEditing(null); setForm(empty); setPosterFile(null) }}>
+              Cancel
+            </button>
+          )}
+          <button className="nx-studio-primary" type="submit" disabled={loading}>
+            {loading ? 'Please wait...' : editing ? 'Save Changes →' : 'Save Video Link →'}
+          </button>
+        </div>
+      </form>
+
+      <section className="nx-studio-heading" style={{ marginTop: 32 }}>
+        <div>
+          <span className="nx-studio-eyebrow">LINK CATALOG</span>
+          <h1>Saved Link Videos</h1>
+          <p>{items.length} link videos</p>
+        </div>
+        <button className="nx-studio-refresh" onClick={loadItems} disabled={loading}>↻ Refresh</button>
+      </section>
+
+      <section className="nx-studio-library">
+        {items.map(item => (
+          <article className="nx-studio-library-item" key={item.id}>
+            {item.poster_url
+              ? <img src={item.poster_url} alt={item.title} />
+              : <div className="nx-studio-no-poster">N+</div>}
+            <div className="nx-studio-library-info">
+              <strong>{item.title}</strong>
+              <small>{item.content_type} · {item.video_url?.includes('youtu') ? 'YouTube link' : 'Direct video link'}</small>
+              <div className="nx-studio-pills">
+                <span className={item.is_published ? 'published' : 'draft'}>{item.is_published ? 'Published' : 'Draft'}</span>
+                <span className={item.rights_verified ? 'published' : 'warning'}>{item.rights_verified ? 'Rights verified' : 'Rights pending'}</span>
+              </div>
+            </div>
+            <div className="nx-studio-library-actions">
+              <button onClick={() => edit(item)}>Edit</button>
+              <button onClick={() => publish(item)}>{item.is_published ? 'Unpublish' : 'Publish'}</button>
+              <button className="danger" onClick={() => remove(item.id)}>Delete</button>
+            </div>
+          </article>
+        ))}
+        {items.length === 0 && <p className="nx-studio-empty">{loading ? 'Loading...' : 'अभी कोई Link Video नहीं है।'}</p>}
+      </section>
+    </div>
+  )
+}
