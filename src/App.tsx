@@ -91,6 +91,59 @@ type Episode = {
 }
 
 export default function App() {
+  const [showDownloadPopup, setShowDownloadPopup] = useState(false)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (!sessionStorage.getItem('nexora-download-dismissed')) {
+        setShowDownloadPopup(true)
+      }
+    }, 3200)
+
+    return () => window.clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    if (!showDownloadPopup) return
+
+    const overlay = document.createElement('div')
+    overlay.className = 'nexora-download-overlay'
+
+    const popup = document.createElement('div')
+    popup.className = 'nexora-download-popup'
+
+    const logo = document.createElement('div')
+    logo.className = 'nexora-download-logo'
+    logo.textContent = 'NEXORA+'
+
+    const heading = document.createElement('h2')
+    heading.textContent = 'Download NEXORA+ App'
+
+    const message = document.createElement('p')
+    message.textContent = 'Install our app for a smoother experience.'
+
+    const download = document.createElement('a')
+    download.className = 'nexora-download-button'
+    download.textContent = 'Download App'
+    download.href = 'https://github.com/durgeshkumarsru-droid/NEXORA-PLUS/releases/latest/download/NEXORA-PLUS.apk'
+    download.setAttribute('download', 'NEXORA-PLUS.apk')
+
+    const later = document.createElement('button')
+    later.className = 'nexora-download-later'
+    later.textContent = 'Maybe Later'
+    later.type = 'button'
+    later.addEventListener('click', () => {
+      sessionStorage.setItem('nexora-download-dismissed', '1')
+      setShowDownloadPopup(false)
+    })
+
+    popup.append(logo, heading, message, download, later)
+    overlay.appendChild(popup)
+    document.body.appendChild(overlay)
+
+    return () => overlay.remove()
+  }, [showDownloadPopup])
+
   useEffect(() => {
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement) {

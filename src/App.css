@@ -2509,3 +2509,78 @@ button, a {
     animation: none;
   }
 }
+
+/* NEXORA+ App Download Popup */
+.nexora-download-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 75px 16px 20px;
+  background: rgba(0, 0, 0, .78);
+  backdrop-filter: blur(7px);
+}
+
+.nexora-download-popup {
+  width: 100%;
+  max-width: 390px;
+  padding: 28px 22px 22px;
+  border: 1px solid #e50914;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #202020, #080808);
+  color: #fff;
+  text-align: center;
+  box-shadow: 0 15px 55px #e5091444;
+  animation: nexora-popup-in .45s ease both;
+}
+
+.nexora-download-logo {
+  margin-bottom: 12px;
+  color: #e50914;
+  font-size: 42px;
+  font-weight: 1000;
+  letter-spacing: 3px;
+}
+
+.nexora-download-popup h2 {
+  margin: 8px 0;
+  font-size: 23px;
+  font-weight: 900;
+}
+
+.nexora-download-popup p {
+  margin: 10px 0 22px;
+  color: #bbb;
+  font-size: 14px;
+}
+
+.nexora-download-button,
+.nexora-download-later {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  border: 0;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.nexora-download-button {
+  background: #e50914;
+  color: white;
+}
+
+.nexora-download-later {
+  margin-top: 10px;
+  background: #292929;
+  color: #ddd;
+}
+
+@keyframes nexora-popup-in {
+  from { opacity: 0; transform: translateY(-25px) scale(.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
