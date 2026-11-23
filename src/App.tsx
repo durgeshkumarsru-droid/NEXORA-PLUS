@@ -215,6 +215,16 @@ export default function App() {
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null)
   const [episodes, setEpisodes] = useState<Episode[]>([])
   const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(null)
+  const [showEpisodePlaylist, setShowEpisodePlaylist] = useState(false)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [videoDuration, setVideoDuration] = useState(0)
+  const [playbackSpeed, setPlaybackSpeed] = useState(1)
+  const [brightness, setBrightness] = useState(100)
+  const [isPlayerLocked, setIsPlayerLocked] = useState(false)
+  const [playerReaction, setPlayerReaction] = useState<'like' | 'dislike' | null>(null)
+  const [showPlayerMenu, setShowPlayerMenu] = useState<'speed' | 'audio' | null>(null)
 
   const [selectedAudioTrack] = useState<AudioTrack | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -702,7 +712,13 @@ export default function App() {
   function playEpisode(index: number) {
     const episode = episodes[index]
     if (!episode) return
+    setShowEpisodePlaylist(false)
     setSelectedEpisode(episode)
+    setCurrentTime(0)
+    setVideoDuration(0)
+    setIsVideoPlaying(false)
+    setIsPlayerLocked(false)
+    setShowPlayerMenu(null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -712,6 +728,35 @@ export default function App() {
     if (currentIndex >= 0 && currentIndex < episodes.length - 1) {
       playEpisode(currentIndex + 1)
     }
+  }
+
+  function toggleVideoPlayback() {
+    const video = videoRef.current
+    if (!video) return
+    if (video.paused) {
+      video.play().catch(error => console.log('Playback error:', error))
+    } else {
+      video.pause()
+    }
+  }
+
+  function seekVideo(seconds: number) {
+    const video = videoRef.current
+    if (!video) return
+    video.currentTime = Math.max(0, Math.min(video.duration || 0, video.currentTime + seconds))
+    setCurrentTime(video.currentTime)
+  }
+
+  function changePlaybackSpeed(speed: number) {
+    setPlaybackSpeed(speed)
+    if (videoRef.current) videoRef.current.playbackRate = speed
+  }
+
+  function formatPlayerTime(seconds: number) {
+    if (!Number.isFinite(seconds)) return '00:00'
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = Math.floor(seconds % 60)
+    return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`
   }
 
   async function openPlayerFullscreen(event: any) {
@@ -875,21 +920,39 @@ export default function App() {
 
               </div>
             ) : (
-            <div id="nexora-player-wrap" style={{position:'relative',width:'100%',aspectRatio:'16 / 9',overflow:'hidden',borderRadius:12,background:'#000'}}>
+            <div id="nexora-player-wrap" style={{
+              position: 'relative',
+              width: (selectedMovie.video_ratio === '9:16' ||
+                (!!selectedMovie.video_width && !!selectedMovie.video_height &&
+                selectedMovie.video_height > selectedMovie.video_width))
+                ? 'min(100%, 420px)' : '100%',
+              margin: '0 auto',
+              aspectRatio: selectedMovie.video_width && selectedMovie.video_height
+                ? `${selectedMovie.video_width} / ${selectedMovie.video_height}`
+                : selectedMovie.video_ratio === '9:16' ? '9 / 16' : '16 / 9',
+              overflow: 'hidden',
+              borderRadius: 12,
+              background: '#000'
+            }}>
               <div className="nx-player-logo" style={{position:'absolute',top:16,left:16,zIndex:2,color:'#E50914',fontSize:20,fontWeight:900,letterSpacing:1.5,textShadow:'0 2px 8px #000',pointerEvents:'none'}}>
                 NEXORA+
               </div>
             <video
-              style={{width:'100%',height:'100%',aspectRatio:'16 / 9',objectFit:'contain',display:'block'}}
+              ref={videoRef}
+              style={{width:'100%',height:'100%',objectFit:'contain',display:'block',filter:`brightness(${brightness}%)`}}
               key={selectedEpisode?.id || selectedMovie.id}
-              controls
               autoPlay
               playsInline
               controlsList="nodownload"
               preload="auto"
               poster={selectedEpisode?.poster_url || selectedMovie.poster_url || undefined}
-              onLoadedMetadata={(e) => { e.currentTarget.currentTime = 0; }}
+              onLoadedMetadata={(e) => {
+                e.currentTarget.currentTime = 0;
+                setVideoDuration(e.currentTarget.duration || 0);
+                setIsVideoPlaying(!e.currentTarget.paused);
+              }}
               onPlay={() => {
+                setIsVideoPlaying(true);
                 if (selectedAudioTrack) audioRef.current?.play().catch(error => console.log('Dubbed audio playback:', error));
               }}
               onSeeking={(e) => {
@@ -903,6 +966,8 @@ export default function App() {
                 if (audioRef.current && selectedAudioTrack && Math.abs(audioRef.current.currentTime - video.currentTime) > 0.35) {
                   audioRef.current.currentTime = video.currentTime;
                 }
+                setCurrentTime(video.currentTime);
+                setVideoDuration(video.duration || 0);
                 const position = Math.floor(video.currentTime);
                 const lastSaved = Number(video.dataset.lastSaved || 0);
 
@@ -921,8 +986,9 @@ export default function App() {
                   if (error) console.error('Progress save error:', error.message);
                 }
               }}
-              onEnded={playNextEpisode}
+              onEnded={() => setShowEpisodePlaylist(true)}
               onPause={async (e) => {
+                setIsVideoPlaying(false);
                 audioRef.current?.pause();
                 const position = Math.floor(e.currentTarget.currentTime);
                 if (position > 0) {
@@ -938,7 +1004,102 @@ export default function App() {
               <source src={activeVideoUrl} type="video/mp4" />
               आपका ब्राउज़र वीडियो सपोर्ट नहीं करता।
             </video>
-                <button
+                
+              {!isPlayerLocked ? (
+                <div className="nx-custom-controls">
+                  <div className="nx-custom-top">
+                    <button onClick={() => {
+                      setSelectedMovie(null);
+                      setSelectedEpisode(null);
+                      setShowEpisodePlaylist(false);
+                    }}>←</button>
+                    <strong>{activeVideoTitle}</strong>
+                    <button onClick={() => setPlayerReaction(playerReaction === 'like' ? null : 'like')}>{playerReaction === 'like' ? '♥' : '♡'}</button>
+                    <button onClick={() => setPlayerReaction(playerReaction === 'dislike' ? null : 'dislike')}>{playerReaction === 'dislike' ? '👎' : '♧'}</button>
+                    <button onClick={() => setIsPlayerLocked(true)}>🔒</button>
+                  </div>
+
+                  <div className="nx-custom-brightness">
+                    <span>☀</span>
+                    <input type="range" min="20" max="150" value={brightness}
+                      onChange={e => setBrightness(Number(e.target.value))} />
+                  </div>
+
+                  <div className="nx-custom-center">
+                    <button onClick={() => seekVideo(-10)}>↶ 10</button>
+                    <button className="nx-custom-play" onClick={toggleVideoPlayback}>
+                      {isVideoPlaying ? 'Ⅱ' : '▶'}
+                    </button>
+                    <button onClick={() => seekVideo(10)}>10 ↷</button>
+                  </div>
+
+                  <div className="nx-custom-bottom">
+                    <input type="range" min="0" max={videoDuration || 0} step="0.1"
+                      value={Math.min(currentTime, videoDuration || 0)}
+                      onChange={e => {
+                        const video = videoRef.current;
+                        if (video) video.currentTime = Number(e.target.value);
+                        setCurrentTime(Number(e.target.value));
+                      }} />
+                    <div className="nx-custom-time">
+                      <span>{formatPlayerTime(currentTime)}</span>
+                      <span>{formatPlayerTime(videoDuration)}</span>
+                    </div>
+                    <div className="nx-custom-tools">
+                      <button onClick={() => navigator.clipboard?.writeText(`${window.location.href}#t=${Math.floor(currentTime)}`)}>✂ Clip</button>
+                      <button onClick={() => setShowPlayerMenu(showPlayerMenu === 'speed' ? null : 'speed')}>Speed {playbackSpeed}x</button>
+                      <button onClick={() => setShowPlayerMenu(showPlayerMenu === 'audio' ? null : 'audio')}>Audio & Subtitles</button>
+                    </div>
+                    {showPlayerMenu === 'speed' && (
+                      <div className="nx-custom-menu">
+                        {[0.5, 0.75, 1, 1.25, 1.5, 2].map(speed => (
+                          <button key={speed} onClick={() => {
+                            changePlaybackSpeed(speed);
+                            setShowPlayerMenu(null);
+                          }}>{speed}x</button>
+                        ))}
+                      </div>
+                    )}
+                    {showPlayerMenu === 'audio' && (
+                      <div className="nx-custom-menu">
+                        <span>{selectedAudioTrack ? 'Dubbed audio selected' : 'Original audio'}</span>
+                        <span>Subtitle track: Not available</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <button className="nx-custom-unlock" onClick={() => setIsPlayerLocked(false)}>🔓 Unlock</button>
+              )}
+
+              {showEpisodePlaylist && selectedEpisode && (
+                <div className="nx-next-episode-overlay">
+                  <h3>Next Episodes</h3>
+                  <div className="nx-next-episode-list">
+                    {episodes.slice(episodes.findIndex(ep => ep.id === selectedEpisode.id) + 1).map(episode => (
+                      <button key={episode.id} className="nx-next-episode-card" onClick={() => {
+                        setShowEpisodePlaylist(false);
+                        setSelectedEpisode(episode);
+                        setCurrentTime(0);
+                        setVideoDuration(0);
+                        setIsVideoPlaying(false);
+                        setIsPlayerLocked(false);
+                        setShowPlayerMenu(null);
+                      }}>
+                        {episode.poster_url && <img src={episode.poster_url} alt={episode.title} />}
+                        <span>Episode {episode.episode_number}</span>
+                        <strong>{episode.title}</strong>
+                      </button>
+                    ))}
+                  </div>
+                  {episodes.findIndex(ep => ep.id === selectedEpisode.id) >= episodes.length - 1 && (
+                    <p>अभी कोई अगली Episode उपलब्ध नहीं है।</p>
+                  )}
+                </div>
+              )}
+
+              {!isPlayerLocked && (
+<button
                   type="button"
                   className="nx-player-fullscreen"
                   style={{
@@ -963,6 +1124,7 @@ export default function App() {
                   title="Full Screen"
                   onClick={openPlayerFullscreen}
                 >⛶</button>
+              )}
             
             </div>
             )}

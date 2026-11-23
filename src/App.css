@@ -2584,3 +2584,236 @@ button, a {
   from { opacity: 0; transform: translateY(-25px) scale(.96); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+/* NEXORA+ Premium Custom Video Controls */
+.nx-custom-controls {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 16px;
+  color: #fff;
+  background: linear-gradient(to bottom, rgba(0,0,0,.78), transparent 28%, transparent 58%, rgba(0,0,0,.85));
+  box-sizing: border-box;
+}
+
+.nx-custom-controls button,
+.nx-custom-controls input {
+  pointer-events: auto;
+}
+
+.nx-custom-controls button,
+.nx-custom-unlock {
+  color: #fff;
+  background: rgba(25,25,25,.78);
+  border: 1px solid #ffffff55;
+  border-radius: 24px;
+  padding: 9px 13px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.nx-custom-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nx-custom-top strong {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.nx-custom-brightness {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 8px;
+  background: #0009;
+  border-radius: 20px;
+}
+
+.nx-custom-brightness input {
+  width: 100px;
+  transform: rotate(-90deg);
+  margin: 38px 0;
+  accent-color: #e50914;
+}
+
+.nx-custom-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+}
+
+.nx-custom-center button {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  font-size: 16px;
+}
+
+.nx-custom-center .nx-custom-play {
+  width: 68px;
+  height: 68px;
+  background: #e50914;
+  border: none;
+  font-size: 27px;
+}
+
+.nx-custom-bottom {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nx-custom-bottom > input[type="range"] {
+  width: 100%;
+  accent-color: #e50914;
+  cursor: pointer;
+}
+
+.nx-custom-time,
+.nx-custom-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.nx-custom-tools button {
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.nx-custom-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  background: #171717;
+  border: 1px solid #ffffff33;
+  border-radius: 12px;
+}
+
+.nx-custom-unlock {
+  position: absolute;
+  z-index: 25;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+@media (max-width: 600px) {
+  .nx-custom-controls {
+    padding: 10px;
+  }
+
+  .nx-custom-top {
+    gap: 5px;
+  }
+
+  .nx-custom-top button {
+    padding: 7px 9px;
+    font-size: 12px;
+  }
+
+  .nx-custom-top strong {
+    font-size: 12px;
+  }
+
+  .nx-custom-center {
+    gap: 14px;
+  }
+
+  .nx-custom-center button {
+    width: 43px;
+    height: 43px;
+    font-size: 13px;
+  }
+
+  .nx-custom-center .nx-custom-play {
+    width: 56px;
+    height: 56px;
+    font-size: 23px;
+  }
+
+  .nx-custom-tools button {
+    padding: 7px 6px;
+    font-size: 10px;
+  }
+}
+
+/* Next Episode Playlist Overlay */
+.nx-next-episode-overlay {
+  position: absolute;
+  z-index: 30;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  width: min(300px, 75%);
+  padding: 14px;
+  overflow-y: auto;
+  color: #fff;
+  background: rgba(8, 10, 18, .94);
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 12px;
+  box-sizing: border-box;
+}
+.nx-next-episode-overlay h3 {
+  margin: 0 0 12px;
+}
+.nx-next-episode-list {
+  display: grid;
+  gap: 10px;
+}
+.nx-next-episode-card {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 4px 10px;
+  align-items: center;
+  width: 100%;
+  padding: 8px;
+  color: #fff;
+  text-align: left;
+  background: #202331;
+  border: 1px solid #393d4d;
+  border-radius: 9px;
+}
+.nx-next-episode-card img {
+  grid-row: span 2;
+  width: 76px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.nx-next-episode-card span {
+  font-size: 11px;
+  color: #bbb;
+}
+.nx-next-episode-card strong {
+  font-size: 13px;
+}
+@media (max-width: 600px) {
+  .nx-next-episode-overlay {
+    top: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: min(230px, 72%);
+    padding: 10px;
+  }
+}
