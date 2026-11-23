@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Capacitor } from '@capacitor/core'
+import { App as CapacitorApp } from '@capacitor/app'
 import { supabase } from './supabase'
+import PhoneInput from 'react-phone-number-input'
+import 'react-phone-number-input/style.css'
 import AdminPanel from './AdminPanel'
 import './App.css'
 
@@ -199,6 +202,10 @@ export default function App() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isSignup, setIsSignup] = useState(false)
+  const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email')
+  const [phone, setPhone] = useState('')
+  const [otp, setOtp] = useState('')
+  const [otpSent, setOtpSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [search, setSearch] = useState('')
@@ -261,9 +268,33 @@ export default function App() {
   }
 
   useEffect(() => {
-    window.history.pushState({ nexora: true }, '', window.location.href)
-    window.addEventListener('popstate', handleAppBack)
-    return () => window.removeEventListener('popstate', handleAppBack)
+    const addHistoryEntry = () => {
+      window.history.pushState({ nexora: true }, '', window.location.href)
+    }
+
+    addHistoryEntry()
+
+    const onPopState = () => {
+      handleAppBack()
+      addHistoryEntry()
+    }
+
+    window.addEventListener('popstate', onPopState)
+
+    let backListener: { remove: () => Promise<void> } | undefined
+
+    if (Capacitor.isNativePlatform()) {
+      CapacitorApp.addListener('backButton', () => {
+        handleAppBack()
+      }).then(listener => {
+        backListener = listener
+      })
+    }
+
+    return () => {
+      window.removeEventListener('popstate', onPopState)
+      backListener?.remove()
+    }
   }, [])
   useEffect(() => {
     const video = document.querySelector<HTMLVideoElement>('#movie-player video')
@@ -489,6 +520,46 @@ export default function App() {
     setLoading(false)
   }
 
+  async function handlePhoneAuth(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setMessage('')
+
+    if (!otpSent) {
+      if (!/^\\+[1-9]\\d{7,14}$/.test(phone.trim())) {
+        setMessage('Enter phone number with country code, e.g. +971501234567')
+        setLoading(false)
+        return
+      }
+
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: phone.trim(),
+        options: { shouldCreateUser: true }
+      })
+
+      if (error) {
+        setMessage(error.message)
+      } else {
+        setOtpSent(true)
+        setMessage('OTP sent. Please check your SMS.')
+      }
+    } else {
+      const { error } = await supabase.auth.verifyOtp({
+        phone: phone.trim(),
+        token: otp.trim(),
+        type: 'sms'
+      })
+
+      if (error) {
+        setMessage(error.message)
+      } else {
+        setMessage('Login successful!')
+      }
+    }
+
+    setLoading(false)
+  }
+
   async function handleForgotPassword() {
     if (!email.trim()) {
       setMessage('Please enter your email address first.')
@@ -560,18 +631,53 @@ export default function App() {
           <div className="logo">NEXORA<span>+</span></div>
           <h1>{isSignup ? 'Create Account' : 'Welcome Back'}</h1>
           <p className="auth-subtitle">Your world of entertainment</p>
-          <form onSubmit={handleAuth}>
-            <input type="email" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)} required />
-            <div className="password-field">
-              <input type={showPassword ? 'text' : 'password'} placeholder="Password (minimum 6 characters)" value={password} onChange={e => setPassword(e.target.value)} minLength={6} required />
-              <button type="button" onClick={() => setShowPassword(!showPassword)}>
-                {showPassword ? 'Hide' : 'Show'}
+          <div className="auth-switch">
+            <button type="button" onClick={() => { setAuthMethod('email'); setOtpSent(false); setMessage('') }}>Email Login</button>
+            <button type="button" onClick={() => { setAuthMethod('phone'); setOtpSent(false); setMessage('') }}>Mobile Login</button>
+          </div>
+          {authMethod === 'email' ? (
+            <form onSubmit={handleAuth}>
+              <input type="email" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)} required />
+              <div className="password-field">
+                <input type={showPassword ? 'text' : 'password'} placeholder="Password (minimum 6 characters)" value={password} onChange={e => setPassword(e.target.value)} minLength={6} required />
+                <button type="button" onClick={() => setShowPassword(!showPassword)}>
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              <button type="submit" disabled={loading}>
+                {loading ? 'Please wait...' : isSignup ? 'Sign Up' : 'Login'}
               </button>
-            </div>
-            <button type="submit" disabled={loading}>
-              {loading ? 'Please wait...' : isSignup ? 'Sign Up' : 'Login'}
-            </button>
-          </form>
+            </form>
+          ) : (
+            <form onSubmit={handlePhoneAuth}>
+              <PhoneInput
+                international
+                defaultCountry="IN"
+                placeholder="Enter mobile number"
+                value={phone || undefined}
+                onChange={value => setPhone(value || '')}
+                disabled={otpSent}
+              />
+              {otpSent && (
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Enter SMS OTP"
+                  value={otp}
+                  onChange={e => setOtp(e.target.value)}
+                  required
+                />
+              )}
+              <button type="submit" disabled={loading}>
+                {loading ? 'Please wait...' : otpSent ? 'Verify OTP & Login' : 'Send OTP'}
+              </button>
+              {otpSent && (
+                <button type="button" onClick={() => { setOtpSent(false); setOtp(''); setMessage('') }}>
+                  Change Mobile Number
+                </button>
+              )}
+            </form>
+          )}
           {!isSignup && (
             <button type="button" onClick={handleForgotPassword} disabled={loading}>
               Forgot Password?
