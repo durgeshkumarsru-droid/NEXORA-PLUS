@@ -105,6 +105,36 @@ export default function App() {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [])
 
+  // NEXORA+ cinematic opening intro
+  useEffect(() => {
+    const splash = document.createElement('div')
+    splash.className = 'nexora-intro'
+
+    const mark = document.createElement('div')
+    mark.className = 'nexora-intro-mark'
+    mark.textContent = 'N'
+
+    const word = document.createElement('div')
+    word.className = 'nexora-intro-word'
+    word.textContent = 'NEXORA+'
+
+    splash.append(mark, word)
+    document.body.appendChild(splash)
+
+    const exitTimer = window.setTimeout(() => {
+      splash.classList.add('nexora-intro-exit')
+    }, 2300)
+
+    const removeTimer = window.setTimeout(() => {
+      splash.remove()
+    }, 3000)
+
+    return () => {
+      window.clearTimeout(exitTimer)
+      window.clearTimeout(removeTimer)
+      splash.remove()
+    }
+  }, [])
 
   const [user, setUser] = useState<any>(null)
   const [isAdmin, setIsAdmin] = useState(false)
