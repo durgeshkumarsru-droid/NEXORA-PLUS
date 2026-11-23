@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { Capacitor } from '@capacitor/core'
-import { App as CapacitorApp } from '@capacitor/app'
 import { supabase } from './supabase'
 import PhoneInput from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
@@ -281,19 +280,11 @@ export default function App() {
 
     window.addEventListener('popstate', onPopState)
 
-    let backListener: { remove: () => Promise<void> } | undefined
-
-    if (Capacitor.isNativePlatform()) {
-      CapacitorApp.addListener('backButton', () => {
-        handleAppBack()
-      }).then(listener => {
-        backListener = listener
-      })
-    }
+    window.addEventListener('nexoraNativeBack', handleAppBack)
 
     return () => {
       window.removeEventListener('popstate', onPopState)
-      backListener?.remove()
+      window.removeEventListener('nexoraNativeBack', handleAppBack)
     }
   }, [])
   useEffect(() => {
