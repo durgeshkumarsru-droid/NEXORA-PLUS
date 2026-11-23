@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Capacitor } from '@capacitor/core'
 import { supabase } from './supabase'
 import AdminPanel from './AdminPanel'
 import './App.css'
@@ -94,6 +95,8 @@ export default function App() {
   const [showDownloadPopup, setShowDownloadPopup] = useState(false)
 
   useEffect(() => {
+    if (Capacitor.isNativePlatform()) return
+
     const timer = window.setTimeout(() => {
       if (!sessionStorage.getItem('nexora-download-dismissed')) {
         setShowDownloadPopup(true)
