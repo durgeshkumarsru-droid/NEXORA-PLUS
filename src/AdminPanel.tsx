@@ -2,6 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from './supabase'
 import LinkVideoStudio from './LinkVideoStudio'
 
+type UserProfile = {
+  id: string
+  full_name: string | null
+  avatar_url: string | null
+  preferred_language: string | null
+  created_at: string | null
+  role?: string
+}
+
 type Movie = {
   id: string
   title: string
@@ -84,6 +93,10 @@ export default function AdminPanel({ onBack }: { onBack?: () => void }) {
   const [supportLoading, setSupportLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('Overview')
   const [search, setSearch] = useState('')
+  const [users, setUsers] = useState<UserProfile[]>([])
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [usersError, setUsersError] = useState('')
+  const [userSearch, setUserSearch] = useState('')
   const [selectedSeriesId, setSelectedSeriesId] = useState('')
   const [episodes, setEpisodes] = useState<Episode[]>([])
   const [episodeTitle, setEpisodeTitle] = useState('')
@@ -107,6 +120,43 @@ export default function AdminPanel({ onBack }: { onBack?: () => void }) {
   const [audioFile, setAudioFile] = useState<File | null>(null)
 
 
+
+
+  async function loadUsers() {
+    setUsersLoading(true)
+    setUsersError('')
+
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url, preferred_language, created_at')
+      .order('created_at', { ascending: false })
+
+    if (profilesError) {
+      setUsersError(profilesError.message)
+      setUsersLoading(false)
+      return
+    }
+
+    const { data: roles, error: rolesError } = await supabase
+      .from('user_roles')
+      .select('user_id, role')
+
+    if (rolesError) {
+      setUsersError(rolesError.message)
+      setUsersLoading(false)
+      return
+    }
+
+    const adminIds = new Set(
+      (roles || []).filter(item => item.role === 'admin').map(item => item.user_id)
+    )
+
+    setUsers((profiles || []).map(profile => ({
+      ...profile,
+      role: adminIds.has(profile.id) ? 'admin' : 'user'
+    })))
+    setUsersLoading(false)
+  }
 
 
   async function loadSupportTickets() {
@@ -426,6 +476,12 @@ export default function AdminPanel({ onBack }: { onBack?: () => void }) {
     loadMovies()
     loadSupportTickets()
   }, [])
+
+  useEffect(() => {
+    if (activeTab === 'Users') {
+      loadUsers()
+    }
+  }, [activeTab])
 
   function updateField(field: string, value: string) {
     setForm(old => ({ ...old, [field]: value }))
@@ -1136,8 +1192,65 @@ export default function AdminPanel({ onBack }: { onBack?: () => void }) {
 
         {activeTab === 'Users' && (
           <>
-            <section className="nx-studio-heading"><div><span className="nx-studio-eyebrow">ACCOUNT MANAGEMENT</span><h1>Users</h1><p>Manage platform accounts and access.</p></div></section>
-            <div className="nx-studio-placeholder"><span>♙</span><h2>User management needs connection</h2><p>User profiles and role permissions need a dedicated secure management workflow. No user data is changed from this screen.</p></div>
+            <section className="nx-studio-heading">
+              <div>
+                <span className="nx-studio-eyebrow">ACCOUNT MANAGEMENT</span>
+                <h1>Users</h1>
+                <p>View registered accounts and their access roles.</p>
+              </div>
+              <button type="button" onClick={loadUsers} disabled={usersLoading}>
+                {usersLoading ? 'Loading...' : 'Refresh Users'}
+              </button>
+            </section>
+            <div className="nx-studio-toolbar">
+              <input type="search" value={userSearch}
+                onChange={event => setUserSearch(event.target.value)}
+                placeholder="Search name, user ID or language..."
+                aria-label="Search users" />
+            </div>
+            {usersError && <p role="alert" className="nx-studio-error">{usersError}</p>}
+            {usersLoading ? (
+              <div className="nx-studio-placeholder"><h2>Loading users...</h2></div>
+            ) : (
+              <>
+                <p>Registered accounts: {users.length}</p>
+                {users.filter(account => {
+                  const term = userSearch.trim().toLowerCase()
+                  return !term ||
+                    (account.full_name || '').toLowerCase().includes(term) ||
+                    account.id.toLowerCase().includes(term) ||
+                    (account.preferred_language || '').toLowerCase().includes(term) ||
+                    (account.role || 'user').toLowerCase().includes(term)
+                }).length === 0 ? (
+                  <div className="nx-studio-placeholder">
+                    <span>♙</span>
+                    <h2>{users.length ? 'No matching users' : 'No user profiles found'}</h2>
+                    <p>{users.length ? 'Try another search.' : 'User profiles will appear here after accounts are created.'}</p>
+                  </div>
+                ) : (
+                  <div className="nx-studio-user-list">
+                    {users.filter(account => {
+                      const term = userSearch.trim().toLowerCase()
+                      return !term ||
+                        (account.full_name || '').toLowerCase().includes(term) ||
+                        account.id.toLowerCase().includes(term) ||
+                        (account.preferred_language || '').toLowerCase().includes(term) ||
+                        (account.role || 'user').toLowerCase().includes(term)
+                    }).map(account => (
+                      <article className="nx-studio-user-card" key={account.id}>
+                        <div>
+                          <h3>{account.full_name || 'Unnamed user'}</h3>
+                          <p>{account.id}</p>
+                          <p>Language: {account.preferred_language || 'Not set'}</p>
+                          <p>Joined: {account.created_at ? new Date(account.created_at).toLocaleDateString() : 'Unknown'}</p>
+                        </div>
+                        <span className="nx-studio-user-role">{account.role || 'user'}</span>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </>
         )}
 
