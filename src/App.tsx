@@ -4,6 +4,7 @@ import { supabase } from './supabase'
 import PhoneInput from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
 import AdminPanel from './AdminPanel'
+import PersonalDetails from './PersonalDetails'
 import './App.css'
 
 type Movie = {
@@ -233,6 +234,8 @@ export default function App() {
   const [profileLanguage, setProfileLanguage] = useState('English')
   const [profileEmail, setProfileEmail] = useState('')
   const [profilePhone, setProfilePhone] = useState('')
+  const [profileAvatar, setProfileAvatar] = useState('')
+  const [avatarUploading, setAvatarUploading] = useState(false)
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileSection, setProfileSection] = useState('')
   const [supportCategory, setSupportCategory] = useState('Technical Issue')
@@ -425,7 +428,7 @@ export default function App() {
     async function loadProfile() {
       const { data, error } = await supabase
         .from('profiles')
-        .select('full_name, preferred_language, email, phone')
+        .select('full_name, preferred_language, email, phone, avatar_url')
         .eq('id', user.id)
         .maybeSingle()
       if (!error && data) {
@@ -433,10 +436,52 @@ export default function App() {
         setProfileLanguage(data.preferred_language || 'English')
         setProfileEmail(data.email || user.email || '')
         setProfilePhone(data.phone || user.user_metadata?.phone || '')
+        setProfileAvatar(data.avatar_url || '')
       }
     }
     loadProfile()
   }, [user])
+
+  async function uploadProfilePhoto(file: File) {
+    if (!user || !file) return
+    if (!file.type.startsWith('image/')) {
+      setMessage('Please select an image file.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage('Photo must be smaller than 5 MB.')
+      return
+    }
+
+    setAvatarUploading(true)
+    const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+    const path = `${user.id}/${Date.now()}.${extension}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(path, file, { upsert: true, contentType: file.type })
+
+    if (uploadError) {
+      setMessage(uploadError.message)
+      setAvatarUploading(false)
+      return
+    }
+
+    const { data: publicData } = supabase.storage.from('avatars').getPublicUrl(path)
+    const photoUrl = publicData.publicUrl
+
+    const { error: saveError } = await supabase
+      .from('profiles')
+      .upsert({ id: user.id, avatar_url: photoUrl }, { onConflict: 'id' })
+
+    if (saveError) {
+      setMessage(saveError.message)
+    } else {
+      setProfileAvatar(photoUrl)
+      setMessage('Profile photo updated successfully.')
+    }
+    setAvatarUploading(false)
+  }
 
   async function saveProfile() {
     setProfileSaving(true)
@@ -1478,20 +1523,30 @@ export default function App() {
       {page === 'My Profile' && (
         <>
         <section className="nx-profile" style={{ display: profileSection ? "none" : undefined }}>
-          <div className="profile-heading">
-            <div className="profile-avatar">{profileName.trim() ? profileName.trim()[0].toUpperCase() : 'N'}</div>
+          <div className="profile-heading profile-heading-new">
+            <label className="profile-photo-picker">
+              <div className="profile-avatar">
+                {profileAvatar
+                  ? <img src={profileAvatar} alt="Profile" />
+                  : profileName.trim() ? profileName.trim()[0].toUpperCase() : 'N'}
+              </div>
+              <span>{avatarUploading ? 'Uploading...' : '📷 Change Photo'}</span>
+              <input
+                type="file"
+                accept="image/*"
+                disabled={avatarUploading}
+                onChange={e => {
+                  const file = e.target.files?.[0]
+                  if (file) void uploadProfilePhoto(file)
+                  e.currentTarget.value = ''
+                }}
+              />
+            </label>
             <div><span className="profile-kicker">NEXORA+ ACCOUNT</span><h1>My Profile</h1><p>Manage your account and preferences</p></div>
           </div>
 
-          <div className="profile-panel">
-            <h2>Personal Details</h2>
-            <label>Registered Email</label>
-            <input value={profileEmail} readOnly />
-
-            <label>Mobile Number</label>
-            <input value={profilePhone || 'Not added'} readOnly />
-
-            <label htmlFor="profile-name">Your Name</label>
+          <div className="profile-panel profile-name-panel">
+            <h2>Your Name</h2>
             <input id="profile-name" value={profileName} onChange={e => setProfileName(e.target.value)} placeholder="Enter your name" />
             <label htmlFor="profile-language">Preferred Language</label>
             <select id="profile-language" value={profileLanguage} onChange={e => setProfileLanguage(e.target.value)}>
@@ -1499,6 +1554,8 @@ export default function App() {
             </select>
             <button className="profile-save" onClick={saveProfile} disabled={profileSaving}>{profileSaving ? 'Saving...' : 'Save Changes'}</button>
           </div>
+
+          <PersonalDetails email={profileEmail} phone={profilePhone} />
 
           <div className="profile-panel">
             <h2>Your NEXORA+</h2>

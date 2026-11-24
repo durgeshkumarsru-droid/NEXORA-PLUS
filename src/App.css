@@ -2932,3 +2932,86 @@ button, a {
   .profile-options{grid-template-columns:1fr}
   .profile-option{min-height:70px}
 }
+
+/* Profile photo and expandable personal details */
+.profile-heading-new {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.profile-photo-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  color: #ff6687;
+  font-size: 12px;
+  font-weight: 700;
+}
+.profile-photo-picker input {
+  display: none;
+}
+.profile-avatar {
+  overflow: hidden;
+  border-radius: 50%;
+}
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.profile-name-panel {
+  margin-top: 12px;
+}
+.personal-details-panel {
+  padding: 0;
+  overflow: hidden;
+}
+.personal-details-toggle {
+  width: 100%;
+  min-height: 76px;
+  padding: 15px 19px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  color: #fff;
+  background: transparent;
+  border: 0;
+}
+.personal-details-toggle span,
+.personal-details-toggle b,
+.personal-details-toggle small {
+  display: block;
+}
+.personal-details-toggle b {
+  font-size: 16px;
+}
+.personal-details-toggle small {
+  margin-top: 5px;
+  color: #aaa0aa;
+  font-size: 11px;
+}
+.personal-details-toggle strong {
+  color: #ff6687;
+  font-size: 23px;
+}
+.personal-details-content {
+  padding: 0 19px 19px;
+}
+.personal-details-content label {
+  display: block;
+  margin: 13px 0 7px;
+  color: #c4b8c4;
+  font-size: 12px;
+}
+.personal-details-content input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 13px;
+  color: #fff;
+  background: #100d13;
+  border: 1px solid #403541;
+  border-radius: 12px;
+}
