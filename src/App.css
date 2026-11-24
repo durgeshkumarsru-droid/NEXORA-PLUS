@@ -2817,3 +2817,118 @@ button, a {
     padding: 10px;
   }
 }
+
+/* NEXORA+ PROFILE - PREMIUM DEMO DESIGN */
+.nx-profile{
+  width:min(100% - 28px,560px);
+  margin:18px auto 120px;
+  color:#fff;
+}
+.profile-heading{
+  flex-direction:column;
+  justify-content:center;
+  text-align:center;
+  gap:12px;
+  padding:22px 12px 28px;
+}
+.profile-avatar{
+  width:88px;
+  height:88px;
+  flex:0 0 88px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:linear-gradient(135deg,#b51e42,#481326);
+  border:3px solid #e34b6c;
+  box-shadow:0 0 25px #b51e4245;
+  font-size:34px;
+}
+.profile-heading h1{
+  margin:5px 0;
+  font-size:25px;
+  font-weight:850;
+}
+.profile-heading p{
+  color:#b9aeb9;
+  font-size:12px;
+}
+.profile-kicker{
+  color:#f05a7a;
+  letter-spacing:2px;
+}
+.profile-panel{
+  margin:0 0 16px;
+  padding:19px;
+  border:1px solid #39303a;
+  border-radius:20px;
+  background:linear-gradient(145deg,#211923,#100d13);
+  box-shadow:0 8px 25px #0005;
+}
+.profile-panel h2{
+  margin:0 0 17px;
+  font-size:17px;
+  font-weight:800;
+}
+.profile-panel label{
+  color:#c4b8c4;
+}
+.profile-panel input,
+.profile-panel select{
+  min-height:48px;
+  border:1px solid #403541;
+  border-radius:12px;
+  background:#100d13;
+}
+.profile-save{
+  background:linear-gradient(135deg,#e52b52,#8e1835);
+  border-radius:13px;
+}
+.profile-options{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+.profile-option{
+  min-width:0;
+  min-height:82px;
+  display:grid;
+  grid-template-columns:36px minmax(0,1fr) 12px;
+  align-content:center;
+  align-items:center;
+  gap:8px;
+  padding:12px 9px;
+  border:1px solid #39303a;
+  border-radius:14px;
+  background:#211923;
+}
+.profile-option>span{
+  width:34px;
+  height:34px;
+  border-radius:11px;
+  background:#3a1c2a;
+  color:#ff6687;
+}
+.profile-option b{
+  font-size:12px;
+  line-height:1.35;
+}
+.profile-option small{
+  font-size:10px;
+  line-height:1.4;
+}
+.profile-option strong{
+  font-size:18px;
+}
+.profile-logout{
+  min-height:50px;
+  border-radius:14px;
+  background:linear-gradient(135deg,#35151f,#211019);
+  border:1px solid #713044;
+}
+.profile-detail .profile-panel{
+  background:linear-gradient(145deg,#211923,#100d13);
+}
+@media(max-width:360px){
+  .profile-options{grid-template-columns:1fr}
+  .profile-option{min-height:70px}
+}
