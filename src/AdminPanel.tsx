@@ -7,6 +7,8 @@ type UserProfile = {
   full_name: string | null
   avatar_url: string | null
   preferred_language: string | null
+  email: string | null
+  phone: string | null
   created_at: string | null
   role?: string
 }
@@ -128,7 +130,7 @@ export default function AdminPanel({ onBack }: { onBack?: () => void }) {
 
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, full_name, avatar_url, preferred_language, created_at')
+      .select('id, full_name, avatar_url, preferred_language, email, phone, created_at')
       .order('created_at', { ascending: false })
 
     if (profilesError) {
@@ -1205,7 +1207,7 @@ export default function AdminPanel({ onBack }: { onBack?: () => void }) {
             <div className="nx-studio-toolbar">
               <input type="search" value={userSearch}
                 onChange={event => setUserSearch(event.target.value)}
-                placeholder="Search name, user ID or language..."
+                placeholder="Search name, email, mobile, user ID or language..."
                 aria-label="Search users" />
             </div>
             {usersError && <p role="alert" className="nx-studio-error">{usersError}</p>}
@@ -1220,6 +1222,8 @@ export default function AdminPanel({ onBack }: { onBack?: () => void }) {
                     (account.full_name || '').toLowerCase().includes(term) ||
                     account.id.toLowerCase().includes(term) ||
                     (account.preferred_language || '').toLowerCase().includes(term) ||
+                    (account.email || '').toLowerCase().includes(term) ||
+                    (account.phone || '').toLowerCase().includes(term) ||
                     (account.role || 'user').toLowerCase().includes(term)
                 }).length === 0 ? (
                   <div className="nx-studio-placeholder">
@@ -1235,12 +1239,16 @@ export default function AdminPanel({ onBack }: { onBack?: () => void }) {
                         (account.full_name || '').toLowerCase().includes(term) ||
                         account.id.toLowerCase().includes(term) ||
                         (account.preferred_language || '').toLowerCase().includes(term) ||
+                        (account.email || '').toLowerCase().includes(term) ||
+                        (account.phone || '').toLowerCase().includes(term) ||
                         (account.role || 'user').toLowerCase().includes(term)
                     }).map(account => (
                       <article className="nx-studio-user-card" key={account.id}>
                         <div>
                           <h3>{account.full_name || 'Unnamed user'}</h3>
                           <p>{account.id}</p>
+                          <p>Email: {account.email || 'Not available'}</p>
+                          <p>Mobile: {account.phone || 'Not added'}</p>
                           <p>Language: {account.preferred_language || 'Not set'}</p>
                           <p>Joined: {account.created_at ? new Date(account.created_at).toLocaleDateString() : 'Unknown'}</p>
                         </div>

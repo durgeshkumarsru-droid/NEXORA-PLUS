@@ -200,11 +200,9 @@ export default function App() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [isSignup, setIsSignup] = useState(false)
-  const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email')
   const [phone, setPhone] = useState('')
-  const [otp, setOtp] = useState('')
-  const [otpSent, setOtpSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [search, setSearch] = useState('')
@@ -233,6 +231,8 @@ export default function App() {
   const [pageLoading, setPageLoading] = useState(false)
   const [profileName, setProfileName] = useState('')
   const [profileLanguage, setProfileLanguage] = useState('English')
+  const [profileEmail, setProfileEmail] = useState('')
+  const [profilePhone, setProfilePhone] = useState('')
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileSection, setProfileSection] = useState('')
   const [supportCategory, setSupportCategory] = useState('Technical Issue')
@@ -425,12 +425,14 @@ export default function App() {
     async function loadProfile() {
       const { data, error } = await supabase
         .from('profiles')
-        .select('full_name, preferred_language')
+        .select('full_name, preferred_language, email, phone')
         .eq('id', user.id)
         .maybeSingle()
       if (!error && data) {
         setProfileName(data.full_name || '')
         setProfileLanguage(data.preferred_language || 'English')
+        setProfileEmail(data.email || user.email || '')
+        setProfilePhone(data.phone || user.user_metadata?.phone || '')
       }
     }
     loadProfile()
@@ -506,73 +508,67 @@ export default function App() {
     setLoading(true)
     setMessage('')
 
-    const result = isSignup
-      ? await supabase.auth.signUp({ email, password })
-      : await supabase.auth.signInWithPassword({ email, password })
-
-    if (result.error) {
-      setMessage(result.error.message)
-    } else if (isSignup && !result.data.session) {
-      setMessage('Account created! Please check your email to confirm your account.')
-    } else {
-      setMessage('Success!')
-    }
-
-    setLoading(false)
-  }
-
-  async function handlePhoneAuth(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    setMessage('')
-
-    if (!otpSent) {
+    try {
       if (!/^\\+[1-9]\\d{7,14}$/.test(phone.trim())) {
-        setMessage('Enter phone number with country code, e.g. +971501234567')
-        setLoading(false)
+        setMessage('Enter a valid mobile number with country code.')
         return
       }
 
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: phone.trim(),
-        options: { shouldCreateUser: true }
-      })
+      if (isSignup) {
+        const { error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            data: { phone: phone.trim() }
+          }
+        })
 
-      if (error) {
-        setMessage(error.message)
+        if (error) {
+          setMessage(error.message)
+        } else {
+          setMessage('Account created! Please check your email to confirm your account.')
+        }
       } else {
-        setOtpSent(true)
-        setMessage('OTP sent. Please check your SMS.')
-      }
-    } else {
-      const { error } = await supabase.auth.verifyOtp({
-        phone: phone.trim(),
-        token: otp.trim(),
-        type: 'sms'
-      })
+        const { data, error } = await supabase.functions.invoke(
+          'phone-password-login',
+          { body: { phone: phone.trim(), password } }
+        )
 
-      if (error) {
-        setMessage(error.message)
-      } else {
-        setMessage('Login successful!')
+        if (error || !data?.access_token || !data?.refresh_token) {
+          setMessage(data?.error || error?.message || 'Invalid mobile number or password.')
+        } else {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: data.access_token,
+            refresh_token: data.refresh_token
+          })
+          setMessage(sessionError ? sessionError.message : 'Login successful!')
+        }
       }
+    } catch {
+      setMessage('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   async function handleForgotPassword() {
     if (!email.trim()) {
-      setMessage('Please enter your email address first.')
+      setMessage('Please enter your account email address.')
       return
     }
+
     setLoading(true)
     setMessage('')
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin
-    })
-    setMessage(error ? error.message : 'Password reset link sent. Please check your email.')
-    setLoading(false)
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: window.location.origin
+      })
+      setMessage(error ? error.message : 'Password reset link sent. Please check your email.')
+    } catch {
+      setMessage('Could not send reset link. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function logout() {
@@ -632,62 +628,72 @@ export default function App() {
           <div className="logo">NEXORA<span>+</span></div>
           <h1>{isSignup ? 'Create Account' : 'Welcome Back'}</h1>
           <p className="auth-subtitle">Your world of entertainment</p>
-          <div className="auth-switch">
-            <button type="button" onClick={() => { setAuthMethod('email'); setOtpSent(false); setMessage('') }}>Email Login</button>
-            <button type="button" onClick={() => { setAuthMethod('phone'); setOtpSent(false); setMessage('') }}>Mobile Login</button>
-          </div>
-          {authMethod === 'email' ? (
-            <form onSubmit={handleAuth}>
-              <input type="email" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)} required />
-              <div className="password-field">
-                <input type={showPassword ? 'text' : 'password'} placeholder="Password (minimum 6 characters)" value={password} onChange={e => setPassword(e.target.value)} minLength={6} required />
-                <button type="button" onClick={() => setShowPassword(!showPassword)}>
-                  {showPassword ? 'Hide' : 'Show'}
-                </button>
-              </div>
-              <button type="submit" disabled={loading}>
-                {loading ? 'Please wait...' : isSignup ? 'Sign Up' : 'Login'}
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handlePhoneAuth}>
-              <PhoneInput
-                international
-                defaultCountry="IN"
-                placeholder="Enter mobile number"
-                value={phone || undefined}
-                onChange={value => setPhone(value || '')}
-                disabled={otpSent}
+          <form onSubmit={handleAuth}>
+            <PhoneInput
+              international
+              defaultCountry="IN"
+              placeholder="Enter mobile number"
+              value={phone || undefined}
+              onChange={value => setPhone(value || '')}
+            />
+            {isSignup && (
+              <input
+                type="email"
+                placeholder="Email address"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
               />
-              {otpSent && (
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="Enter SMS OTP"
-                  value={otp}
-                  onChange={e => setOtp(e.target.value)}
-                  required
-                />
-              )}
-              <button type="submit" disabled={loading}>
-                {loading ? 'Please wait...' : otpSent ? 'Verify OTP & Login' : 'Send OTP'}
+            )}
+            <div className="password-field">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Password (minimum 6 characters)"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                minLength={6}
+                required
+              />
+              <button type="button" onClick={() => setShowPassword(!showPassword)}>
+                {showPassword ? 'Hide' : 'Show'}
               </button>
-              {otpSent && (
-                <button type="button" onClick={() => { setOtpSent(false); setOtp(''); setMessage('') }}>
-                  Change Mobile Number
-                </button>
-              )}
-            </form>
-          )}
-          {!isSignup && (
-            <button type="button" onClick={handleForgotPassword} disabled={loading}>
-              Forgot Password?
+            </div>
+            <button type="submit" disabled={loading}>
+              {loading ? 'Please wait...' : isSignup ? 'Sign Up' : 'Login'}
             </button>
+          </form>
+          {!isSignup && (
+            <>
+              <button
+                type="button"
+                onClick={() => { setShowForgotPassword(!showForgotPassword); setMessage('') }}
+                disabled={loading}
+              >
+                Forgot Password?
+              </button>
+              {showForgotPassword && (
+                <div>
+                  <input
+                    type="email"
+                    placeholder="Enter your account email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                  />
+                  <button type="button" onClick={handleForgotPassword} disabled={loading}>
+                    Send Reset Link
+                  </button>
+                </div>
+              )}
+            </>
           )}
           {message && <p className="auth-message">{message}</p>}
           <p className="auth-switch">
             {isSignup ? 'Already have an account?' : "Don't have an account?"}
-            <button onClick={() => { setIsSignup(!isSignup); setMessage('') }}>
+            <button type="button" onClick={() => {
+              setIsSignup(!isSignup)
+              setShowForgotPassword(false)
+              setMessage('')
+            }}>
               {isSignup ? 'Login' : 'Sign Up'}
             </button>
           </p>
@@ -1479,6 +1485,12 @@ export default function App() {
 
           <div className="profile-panel">
             <h2>Personal Details</h2>
+            <label>Registered Email</label>
+            <input value={profileEmail} readOnly />
+
+            <label>Mobile Number</label>
+            <input value={profilePhone || 'Not added'} readOnly />
+
             <label htmlFor="profile-name">Your Name</label>
             <input id="profile-name" value={profileName} onChange={e => setProfileName(e.target.value)} placeholder="Enter your name" />
             <label htmlFor="profile-language">Preferred Language</label>
