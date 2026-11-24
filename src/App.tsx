@@ -509,7 +509,7 @@ export default function App() {
     setMessage('')
 
     try {
-      if (!/^\\+[1-9]\\d{7,14}$/.test(phone.trim())) {
+      if (!/^\+[1-9]\d{7,14}$/.test(phone.trim())) {
         setMessage('Enter a valid mobile number with country code.')
         return
       }
