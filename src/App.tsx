@@ -443,55 +443,91 @@ export default function App() {
   }, [user])
 
   async function uploadProfilePhoto(file: File) {
-    if (!user || !file) return
-    if (!file.type.startsWith('image/')) {
-      setMessage('Please select an image file.')
+    if (!user || !file) {
+      setMessage('Please sign in before uploading a profile photo.')
       return
     }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    if (!allowedTypes.includes(file.type)) {
+      setMessage('Please select a JPG, PNG, WEBP or GIF image.')
+      return
+    }
+
     if (file.size > 5 * 1024 * 1024) {
       setMessage('Photo must be smaller than 5 MB.')
       return
     }
 
     setAvatarUploading(true)
-    const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg'
-    const path = `${user.id}/${Date.now()}.${extension}`
+    setMessage('Uploading profile photo...')
 
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(path, file, { upsert: true, contentType: file.type })
+    try {
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession()
 
-    if (uploadError) {
-      setMessage(uploadError.message)
-      setAvatarUploading(false)
-      return
-    }
+      if (sessionError) throw sessionError
+      if (!sessionData.session) {
+        throw new Error('Login session expired. Please log in again.')
+      }
 
-    const { data: publicData } = supabase.storage.from('avatars').getPublicUrl(path)
-    const photoUrl = publicData.publicUrl
+      const extension = file.type.split('/')[1].replace('jpeg', 'jpg')
+      const path = `${user.id}/${Date.now()}.${extension}`
 
-    const { error: saveError } = await supabase
-      .from('profiles')
-      .upsert({ id: user.id, avatar_url: photoUrl }, { onConflict: 'id' })
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, {
+          contentType: file.type,
+          upsert: false,
+          cacheControl: '3600'
+        })
 
-    if (saveError) {
-      setMessage(saveError.message)
-    } else {
+      if (uploadError) throw uploadError
+
+      const { data: publicData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(path)
+
+      const photoUrl = publicData.publicUrl
+
+      const { error: saveError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: photoUrl })
+        .eq('id', user.id)
+
+      if (saveError) throw saveError
+
       setProfileAvatar(photoUrl)
       setMessage('Profile photo updated successfully.')
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error)
+      setMessage(`Photo upload failed: ${reason}`)
+    } finally {
+      setAvatarUploading(false)
     }
-    setAvatarUploading(false)
   }
 
   async function saveProfile() {
+    if (!user) {
+      setMessage('Please log in to save your profile.')
+      return
+    }
+
     setProfileSaving(true)
-    const { error } = await supabase.from('profiles').upsert({
-      id: user.id,
-      full_name: profileName.trim(),
-      preferred_language: profileLanguage
-    }, { onConflict: 'id' })
-    setMessage(error ? error.message : 'Profile updated successfully.')
-    setProfileSaving(false)
+    try {
+      const { error } = await supabase.from('profiles').upsert({
+        id: user.id,
+        full_name: profileName.trim(),
+        preferred_language: profileLanguage
+      }, { onConflict: 'id' })
+
+      if (error) throw error
+      setMessage('Profile updated successfully.')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error))
+    } finally {
+      setProfileSaving(false)
+    }
   }
 
   async function loadSupportTickets() {
@@ -1545,17 +1581,16 @@ export default function App() {
             <div><span className="profile-kicker">NEXORA+ ACCOUNT</span><h1>My Profile</h1><p>Manage your account and preferences</p></div>
           </div>
 
-          <div className="profile-panel profile-name-panel">
-            <h2>Your Name</h2>
-            <input id="profile-name" value={profileName} onChange={e => setProfileName(e.target.value)} placeholder="Enter your name" />
-            <label htmlFor="profile-language">Preferred Language</label>
-            <select id="profile-language" value={profileLanguage} onChange={e => setProfileLanguage(e.target.value)}>
-              {['English','Hindi','Arabic','Urdu','Spanish','French','Portuguese','Japanese','Korean','Chinese'].map(x => <option key={x}>{x}</option>)}
-            </select>
-            <button className="profile-save" onClick={saveProfile} disabled={profileSaving}>{profileSaving ? 'Saving...' : 'Save Changes'}</button>
-          </div>
-
-          <PersonalDetails email={profileEmail} phone={profilePhone} />
+          <PersonalDetails
+            name={profileName}
+            email={profileEmail}
+            phone={profilePhone}
+            language={profileLanguage}
+            saving={profileSaving}
+            onNameChange={setProfileName}
+            onLanguageChange={setProfileLanguage}
+            onSave={saveProfile}
+          />
 
           <div className="profile-panel">
             <h2>Your NEXORA+</h2>
